@@ -5,7 +5,7 @@ interface HealthStatus {
   timestamp: string
 }
 
-@Controller('health')
+@Controller( 'health' )
 export class HealthController {
   @Get()
   checkHealth(): HealthStatus {
