@@ -1,6 +1,6 @@
 import { Signal } from "./Signals"
 
-export interface Provider {
+export interface Provider< T = void > {
   name: string
-  fetch(): Promise< Signal[] >
+  fetch( input: T ): Promise< Signal[] >
 }
