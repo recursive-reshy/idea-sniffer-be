@@ -1,3 +1,10 @@
+// Payload for starting a Reddit scrape run
+export interface FetchSubredditsPayload {
+  subreddits: string[]
+  // TODO: Add other params i.e. sort_by, sort_by_time, keyword, start_date
+}
+
+// Response from Bright data scraper
 export interface RedditRecord {
   // Core signal fields
   post_id: string

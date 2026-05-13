@@ -3,14 +3,14 @@ import { Controller, Post, Body } from '@nestjs/common'
 // Services
 import { RedditService } from './reddit.service'
 // Types
-import type { FetchSubredditsPayload } from '../../providers/reddit'
+import type { FetchSubredditsPayload, RedditRecord } from '../../types/Reddit'
 
 @Controller( 'reddit' )
 export class RedditController {
   constructor( private readonly redditService: RedditService ) {}
 
   @Post( 'run' )
-  async startRun( @Body() body: FetchSubredditsPayload ) {
+  async startRun( @Body() body: FetchSubredditsPayload ): Promise< RedditRecord[] > {
     return await this.redditService.startRun( body )
   }
 }

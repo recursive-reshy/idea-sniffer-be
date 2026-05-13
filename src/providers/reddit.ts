@@ -4,12 +4,7 @@ import { ConfigService } from '@nestjs/config'
 // Services
 import { HttpService } from '../common/http/http.service'
 // Types
-import { Provider } from '../types/Provider'
-import { Signal } from '../types/Signals'
-
-export interface FetchSubredditsPayload {
-  subreddits: string[]
-}
+import { FetchSubredditsPayload, RedditRecord } from '../types/Reddit'
 
 interface TriggerResponse {
   snapshot_id: string
@@ -161,7 +156,7 @@ export class RedditProvider {
     }
   }
 
-  async downloadSnapshot( snapshotId: string ): Promise< any[] > {
+  async downloadSnapshot( snapshotId: string ): Promise< RedditRecord[] > {
     const MAX_RETRIES: number = 3
     let retries: number = 0
 
@@ -169,7 +164,7 @@ export class RedditProvider {
       try {
         this.logger.log( `Attempting to download snapshot ${ snapshotId }` )
   
-        const response = await this.httpService.get< any[] | DownloadSnapshotResponse >(
+        const response = await this.httpService.get< RedditRecord[] | DownloadSnapshotResponse >(
           `${ this.baseUrl }/snapshot/${ snapshotId }/?format=json`, // TODO: Move URL to config file
           // TODO: Make headers a constant across all requests
           { headers: {
@@ -185,7 +180,7 @@ export class RedditProvider {
         }
   
         this.logger.log( `Downloaded data for snapshot ${ snapshotId }` )
-        return response as any[]
+        return response as RedditRecord[]
 
       } catch ( error ) {
         this.logger.error( `Error while downloading snapshot ${ snapshotId }`, error )
