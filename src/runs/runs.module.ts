@@ -1,17 +1,9 @@
 // Nest
 import { Module } from '@nestjs/common'
-// Http
-import { CommonHttpModule } from '../common/http/http.module'
-// Controllers
-import { RunsController } from './runs.controller'
-// Services
-import { RunsService } from './runs.service'
-// Providers
-import { RedditProvider } from '../providers/reddit'
+// Provider modules
+import { RedditModule } from './reddit/reddit.module'
 
-@Module( { 
-  imports: [ CommonHttpModule ],
-  controllers: [ RunsController ],
-  providers: [ RunsService, RedditProvider ],
+@Module( {
+  imports: [ RedditModule ],
 } )
 export class RunsModule {}
