@@ -3,6 +3,8 @@ import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 // Services
 import { HttpService } from '../common/http/http.service'
+// Utils
+import { sleep } from '../common/utils'
 // Types
 import { FetchSubredditsPayload, RedditRecord } from '../types/Reddit'
 
@@ -138,8 +140,7 @@ export class RedditProvider {
           throw new HttpException( 'Snapshot processing failed', HttpStatus.BAD_GATEWAY )
         }
 
-        // TODO: Make sleep utility function
-        await new Promise( resolve => setTimeout( resolve, 5000 ) ) // Wait for 5 seconds before retrying
+        await sleep( 5 * 1000 )
         // TODO: Need to handle exceptions thrown in try block. Similar to startScrape
       } catch ( error: any ) {
         retries++
@@ -150,8 +151,7 @@ export class RedditProvider {
           throw new HttpException( 'Maximum retries exceeded', HttpStatus.BAD_GATEWAY )
         }
 
-        // TODO: Make sleep utility function
-        await new Promise( resolve => setTimeout( resolve, 5000 ) ) // Wait for 5 seconds before retrying
+        await sleep( 5 * 1000 )
       }
     }
   }
@@ -175,7 +175,7 @@ export class RedditProvider {
 
         if( ( response as DownloadSnapshotResponse ).status == DownloadStatus.BUILDING ) {
           this.logger.log( `Snapshot ${ snapshotId } is still building, retrying in 30s...` )
-          await new Promise( resolve => setTimeout( resolve, 30000 ) )
+          await sleep( 30 * 1000 )
           continue
         }
   
@@ -190,8 +190,7 @@ export class RedditProvider {
           throw new HttpException( 'Maximum retries exceeded', HttpStatus.BAD_GATEWAY )
         }
         
-        // TODO: Make sleep utility function
-        await new Promise( resolve => setTimeout( resolve, 30 * 1000 ) ) // Wait for 30 seconds before retrying
+        await sleep( 30 * 1000 )
       }
     }
   }
