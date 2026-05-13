@@ -183,8 +183,15 @@ export class RedditProvider {
         return response as RedditRecord[]
 
       } catch ( error ) {
-        this.logger.error( `Error while downloading snapshot ${ snapshotId }`, error )
-        throw new HttpException( 'Failed to download snapshot data', HttpStatus.BAD_GATEWAY )
+        retries++
+
+        if( retries >= MAX_RETRIES ) {
+          this.logger.error( `Maximum retries exceeded for downloading snapshot ${ snapshotId }` )
+          throw new HttpException( 'Maximum retries exceeded', HttpStatus.BAD_GATEWAY )
+        }
+        
+        // TODO: Make sleep utility function
+        await new Promise( resolve => setTimeout( resolve, 30 * 1000 ) ) // Wait for 30 seconds before retrying
       }
     }
   }
