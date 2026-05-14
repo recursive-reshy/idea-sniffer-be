@@ -2,9 +2,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 // Modules
-import { CommonHttpModule } from './common/http/http.module'
-import { RunsModule } from './runs/runs.module'
-import { StorageModule } from './storage/storage.module'
+import { CommonHttpModule } from '@common/http/http.module'
+import { RunsModule } from '@runs/runs.module'
+import { StorageModule } from '@storage/storage.module'
 // Controllers
 import { HealthController } from './health/health.controller'
 

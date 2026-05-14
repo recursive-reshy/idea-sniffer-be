@@ -3,7 +3,7 @@ import { Controller, Post, Body } from '@nestjs/common'
 // Services
 import { RedditService } from './reddit.service'
 // Types
-import type { FetchSubredditsPayload, RedditRecord } from '../../types/Reddit'
+import type { FetchSubredditsPayload, RedditRecord } from '@app-types/Reddit'
 
 @Controller( 'reddit' )
 export class RedditController {

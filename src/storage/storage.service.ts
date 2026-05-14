@@ -5,7 +5,7 @@ import { ConfigService } from '@nestjs/config'
 import path from 'path'
 import { mkdirSync, existsSync, appendFileSync,  } from 'fs'
 // Types
-import { RedditRecord } from '../types/Reddit'
+import { RedditRecord } from '@app-types/Reddit'
 
 @Injectable()
 export class StorageService {

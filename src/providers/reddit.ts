@@ -2,11 +2,11 @@
 import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 // Services
-import { HttpService } from '../common/http/http.service'
+import { HttpService } from '@common/http/http.service'
 // Utils
-import { sleep } from '../common/utils'
+import { sleep } from '@common/utils'
 // Types
-import { FetchSubredditsPayload, RedditRecord } from '../types/Reddit'
+import { FetchSubredditsPayload, RedditRecord } from '@app-types/Reddit'
 
 interface TriggerResponse {
   snapshot_id: string

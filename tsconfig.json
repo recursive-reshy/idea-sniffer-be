@@ -21,7 +21,14 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "types": [ "node", "jest" ]
+    "types": [ "node", "jest" ],
+    "paths": {
+      "@runs/*": [ "./src/runs/*" ],
+      "@providers/*": [ "./src/providers/*" ],
+      "@storage/*": [ "./src/storage/*" ],
+      "@common/*": [ "./src/common/*" ],
+      "@app-types/*": [ "./src/types/*" ]
+    }
   },
   "include": [ "src/**/*", "test/**/*" ],
   "exclude": [ "node_modules", "dist" ]

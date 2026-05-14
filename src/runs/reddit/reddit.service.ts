@@ -1,11 +1,11 @@
 // Nest
 import { Injectable } from '@nestjs/common'
 // Providers
-import { RedditProvider } from '../../providers/reddit'
+import { RedditProvider } from '@providers/reddit'
 // Services
-import { StorageService } from '../../storage/storage.service'
+import { StorageService } from '@storage/storage.service'
 // Types
-import { FetchSubredditsPayload, RedditRecord } from '../../types/Reddit'
+import { FetchSubredditsPayload, RedditRecord } from '@app-types/Reddit'
 
 @Injectable()
 export class RedditService {
