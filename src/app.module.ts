@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config'
 // Modules
 import { CommonHttpModule } from './common/http/http.module'
 import { RunsModule } from './runs/runs.module'
+import { StorageModule } from './storage/storage.module'
 // Controllers
 import { HealthController } from './health/health.controller'
 
@@ -11,7 +12,8 @@ import { HealthController } from './health/health.controller'
   imports: [
     ConfigModule.forRoot( { isGlobal: true } ), // Load environment variables from .env file
     CommonHttpModule, 
-    RunsModule 
+    RunsModule,
+    StorageModule
   ],
   controllers: [ HealthController ],
 } )
