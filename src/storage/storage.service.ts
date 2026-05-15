@@ -19,7 +19,7 @@ export class StorageService {
 
   // Helper function to ensure that a directory exists, creating it if necessary
   private ensureDir( path: string ): void {
-    this.logger.debug( `Ensuring directory exists: ${ path }` )
+    this.logger.log( `Ensuring directory exists: ${ path }` )
     if ( !existsSync( path ) ) {
       mkdirSync( path, { recursive: true } )
       this.logger.log( `Created directory: ${ path }` )
@@ -37,7 +37,7 @@ export class StorageService {
 
   async writeBronze( records: RedditRecord[], provider: string ): Promise< void > {
     const filePath = this.resolvePath( provider )
-    this.logger.debug( `Writing ${ records.length } records to ${ filePath }` )
+    this.logger.log( `Writing ${ records.length } records to ${ filePath }` )
 
     let written: number = 0
 
