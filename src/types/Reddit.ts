@@ -69,3 +69,9 @@ export interface RedditRelatedPost {
   num_upvotes: string
   num_comments: number
 }
+
+// Response shape returned by startRun
+export interface RedditRunResult {
+  records: RedditRecord[]
+  elapsed: string
+}

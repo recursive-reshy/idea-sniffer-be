@@ -5,8 +5,10 @@ import { RedditProvider } from '@providers/reddit'
 // Services
 import { StorageService } from '@storage/storage.service'
 import { CacheService } from '../../cache/cache.service'
+// Utils
+import { formatElapsed } from '@common/utils'
 // Types
-import { FetchSubredditsPayload, RedditRecord } from '@app-types/Reddit'
+import { FetchSubredditsPayload, RedditRecord, RedditRunResult } from '@app-types/Reddit'
 
 @Injectable()
 export class RedditService {
@@ -19,18 +21,25 @@ export class RedditService {
     private readonly cacheService: CacheService
   ) {}
 
-  async startRun( body: FetchSubredditsPayload ): Promise< RedditRecord[] > {
+  async startRun( body: FetchSubredditsPayload ): Promise< RedditRunResult > {
+    const startTime = Date.now()
+
     // 1. Start scrape and get snapshot id
     const snapshotId: string = await this.redditProvider.startScrape( body )
 
     // 2. Poll for results until ready or failed
     await this.redditProvider.pollSnapshot( snapshotId )
 
+    /**
+     * TODO: Seems some of the records are failing silently
+     * The record object will return an error message. Try set order_by in scrape payload to see
+     * We need to figure out how to handle these records. For now we will just log them and skip
+     */
     // 3. Download results if ready
     const results: RedditRecord[] = await this.redditProvider.downloadSnapshot( snapshotId )
 
-    // 4. Filter out already seen records using cache service
-    const newRecords: RedditRecord[] = results.filter( record => this.cacheService.isNew( this.PROVIDER, record.post_id ) )
+    // 4. Filter out already seen records using cache service (skip records with no post_id)
+    const newRecords: RedditRecord[] = results.filter( record => record.post_id && this.cacheService.isNew( this.PROVIDER, record.post_id ) )
 
     const skipped: number = results.length - newRecords.length
 
@@ -40,8 +49,10 @@ export class RedditService {
       await this.cacheService.markSeenBatch( this.PROVIDER, newRecords.map( record => record.post_id ) )
     }
 
-    this.logger.log( `Reddit run completed. Total: ${ results.length }, New: ${ newRecords.length }, Skipped: ${ skipped }` )
+    const elapsed = formatElapsed( Date.now() - startTime )
 
-    return newRecords
+    this.logger.log( `Reddit run completed. Total: ${ results.length }, New: ${ newRecords.length }, Skipped: ${ skipped }, Elapsed: ${ elapsed }` )
+
+    return { records: newRecords, elapsed }
   }
 }
