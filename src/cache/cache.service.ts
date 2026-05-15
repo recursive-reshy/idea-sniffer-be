@@ -22,7 +22,7 @@ export class CacheService implements OnModuleInit{
     this.load()
   }
 
-  private resolvePath( provider: string, id: string ): string {
+  private resolvePath( provider: string ): string {
     return path.join( this.cacheDir, `${ provider.toLowerCase() }_seen_ids.json` )
   }
 
@@ -57,13 +57,13 @@ export class CacheService implements OnModuleInit{
 
   // Check if a record has been seen before
   isNew( provider: string, id: string ): boolean {
-    return this.seedIds.get( provider )?.has( id ) || false
+    return !( this.seedIds.get( provider )?.has( id ) ?? false )
   }
 
   // Atomic write to tmp file first, then rename
   // This prevents cache corruption if the process is killed during write
   private async persist( provider: string ): Promise< void > {
-    const filePath = this.resolvePath( provider, '' )
+    const filePath = this.resolvePath( provider )
     const tempFilePath = `${ filePath }.tmp`
 
     try {
@@ -94,7 +94,7 @@ export class CacheService implements OnModuleInit{
     }
 
     const providerCache = this.seedIds.get( provider )
-    ids.forEach( id => providerCache!.add( id ) )
+    ids.filter( Boolean ).forEach( id => providerCache!.add( id ) )
     await this.persist( provider )
   }
 }

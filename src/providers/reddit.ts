@@ -75,10 +75,14 @@ export class RedditProvider {
        *  }, 
        * ] }
       */
+     // TODO: Define type for payload
       const payload = JSON.stringify( {
         input: subreddits.map( ( subReddit ) => ( {
           url: `https://www.reddit.com/r/${ subReddit }`,
-          sort_by: 'Hot', // TODO: Should come from payload
+          // TODO: Should come from payload
+          // If start_date is provided, sort_by needs to be 'New'
+          sort_by: 'New', 
+          start_date: new Date( Date.now() - 1 * 24 * 60 * 60 * 1000 ).toISOString(), // TODO: Should come from payload. Currently set to fetch posts from the previous day
         } ) )
       } )
 
