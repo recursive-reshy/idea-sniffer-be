@@ -1,7 +1,24 @@
+export enum SortBy {
+  HOT = 'Hot',
+  NEW = 'New',
+  TOP = 'Top',
+  RISING = 'Rising'
+}
+
+export enum SortByTime {
+  TODAY = 'Today',
+  THIS_WEEK = 'This Week',
+  THIS_YEAR = 'This Year',
+  ALL_TIME = 'All Time'
+}
+
 // Payload for starting a Reddit scrape run
 export interface FetchSubredditsPayload {
   subreddits: string[]
-  // TODO: Add other params i.e. sort_by, sort_by_time, keyword, start_date
+  sort_by?: SortBy
+  sort_by_time?: SortByTime
+  keyword?: string
+  start_date?: string
 }
 
 // Response from Bright data scraper

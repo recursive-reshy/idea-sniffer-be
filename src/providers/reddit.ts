@@ -6,7 +6,13 @@ import { HttpService } from '@common/http/http.service'
 // Utils
 import { sleep } from '@common/utils'
 // Types
-import { FetchSubredditsPayload, RedditRecord } from '@app-types/Reddit'
+import { FetchSubredditsPayload, RedditRecord, SortBy, SortByTime } from '@app-types/Reddit'
+
+interface BrightDataTriggerPayload {
+  input: Omit< FetchSubredditsPayload, 'subreddits' > & {
+    url: string
+  }[]
+}
 
 interface TriggerResponse {
   snapshot_id: string
@@ -51,7 +57,13 @@ export class RedditProvider {
   ) {}
 
   // Start bright data scrape. Returns snapshot id to poll for results
-  async startScrape( { subreddits }: FetchSubredditsPayload ): Promise< string > {
+  async startScrape( { 
+    subreddits,
+    sort_by = SortBy.HOT,
+    sort_by_time,
+    keyword,
+    start_date 
+  }: FetchSubredditsPayload ): Promise< string > {
     try {
 
       if( !this.configService.get< string >( 'BRIGHT_DATA_API_KEY' )?.trim() ) {
@@ -62,6 +74,16 @@ export class RedditProvider {
       if( !subreddits || !subreddits.length ) {
         this.logger.error( 'No subreddits provided in payload' )
         throw new HttpException( 'No subreddits provided', HttpStatus.BAD_REQUEST )
+      }
+
+      if( sort_by && !Object.values( SortBy ).includes( sort_by ) ) {
+        this.logger.error( 'Invalid sort_by value provided' )
+        throw new HttpException( 'Invalid sort_by value', HttpStatus.BAD_REQUEST )
+      }
+
+      if( sort_by_time && !Object.values( SortByTime ).includes( sort_by_time ) ) {
+        this.logger.error( 'Invalid sort_by_time value provided' )
+        throw new HttpException( 'Invalid sort_by_time value', HttpStatus.BAD_REQUEST )
       }
 
       /** Construct payload for Bright data web scraper 
@@ -75,22 +97,21 @@ export class RedditProvider {
        *  }, 
        * ] }
       */
-     // TODO: Define type for payload
-      const payload = JSON.stringify( {
+      const payload: BrightDataTriggerPayload = {
         input: subreddits.map( ( subReddit ) => ( {
           url: `https://www.reddit.com/r/${ subReddit }`,
-          // TODO: Should come from payload
-          // If start_date is provided, sort_by needs to be 'New'
-          sort_by: 'New', 
-          start_date: new Date( Date.now() - 1 * 24 * 60 * 60 * 1000 ).toISOString(), // TODO: Should come from payload. Currently set to fetch posts from the previous day
+          sort_by, // If start_date is provided, sort_by needs to be 'New'
+          sort_by_time,
+          keyword,
+          start_date
         } ) )
-      } )
+      }
 
       this.logger.log( `Fetching Reddit signals with payload: ${ payload }` )
 
       const response: TriggerResponse = await this.httpService.post( 
         this.triggerUrl, // TODO: Move URL to config file
-        payload,
+        JSON.stringify( payload ),
         // TODO: Make headers a constant across all requests
         { headers: {
             'Content-Type': 'application/json',
@@ -99,7 +120,7 @@ export class RedditProvider {
         }
       )
 
-      this.logger.log( `Received response from Bright Data: ${ JSON.stringify( response ) }` )
+      this.logger.log( `Received snapshot ID from Bright Data: ${ JSON.stringify( response ) }` )
 
       return response.snapshot_id
 
