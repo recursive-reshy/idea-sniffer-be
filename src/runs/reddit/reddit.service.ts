@@ -13,7 +13,7 @@ import { FetchSubredditsPayload, RedditRecord, RedditRunResult } from '@app-type
 @Injectable()
 export class RedditService {
   private readonly logger = new Logger( RedditService.name )
-  private readonly PROVIDER = 'reddit'
+  private readonly PROVIDER = 'reddit' // TODO: consider making this an enum in types file
   
   constructor( 
     private readonly redditProvider: RedditProvider,

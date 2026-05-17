@@ -44,7 +44,7 @@ interface DownloadSnapshotResponse {
 
 @Injectable()
 export class RedditProvider {
-  readonly name = 'Reddit'
+  readonly name = 'Reddit' // TODO: consider making this an enum in types file
   private readonly logger = new Logger( RedditProvider.name )
   // TODO: Move this to a config file
   private readonly baseUrl = 'https://api.brightdata.com/datasets/v3'
