@@ -168,6 +168,7 @@ export class RedditProvider {
         await sleep( 5 * 1000 )
         // TODO: Need to handle exceptions thrown in try block. Similar to startScrape
       } catch ( error: any ) {
+        if ( error instanceof HttpException ) throw error
         retries++
         this.logger.error( `Error while polling snapshot ${ snapshotId }, attempt ${ retries }`, JSON.stringify( error ) )
 
