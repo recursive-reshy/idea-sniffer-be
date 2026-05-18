@@ -46,6 +46,6 @@ export class FilterService {
 
     const filteredFile = await this.storageService.writeFiltered( passed, 'reddit' )
 
-    return { filteredFile: JSON.stringify( filteredFile ), stats }
+    return { filteredFile, stats }
   }
 }

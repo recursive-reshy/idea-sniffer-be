@@ -2,6 +2,8 @@
 import { FilterMode, FilterThresholds } from '@app-types/Filter'
 import { RedditRecord } from '@app-types/Reddit'
 
+
+// TODO: All the constants should probably go to a config file. If UI is up, it should be controlled from there. 
 const THRESHOLDS: Record< FilterMode, FilterThresholds > = {
   [ FilterMode.CONSERVATIVE ]: { minUpvotes: 2, minComments: 1 },
   [ FilterMode.BALANCED ]: { minUpvotes: 10, minComments: 3 },

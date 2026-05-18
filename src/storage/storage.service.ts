@@ -76,11 +76,9 @@ export class StorageService {
   }
 
   // TODO: Not provider agnostic, need to review
-  async writeFiltered( records: RedditRecord[], provider: string ): Promise< void > {
+  async writeFiltered( records: RedditRecord[], provider: string ): Promise< string > {
     const filePath = this.resolvePath( provider, this.filteredDir )
     this.logger.log( `Writing ${ records.length } filtered records to ${ filePath }` )
-
-    let written: number = 0
 
     try {
       const lines = records
@@ -93,5 +91,7 @@ export class StorageService {
       this.logger.error( `Error writing to filtered storage: ${ ( error as Error ).message }` )
       throw error
     }
+
+    return path.basename( filePath )
   }
 }
