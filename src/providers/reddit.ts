@@ -50,11 +50,17 @@ export class RedditProvider {
   private readonly baseUrl = 'https://api.brightdata.com/datasets/v3'
   private readonly datasetId = 'gd_lvz8ah06191smkebj4'
   private readonly triggerUrl = `${ this.baseUrl }/trigger?dataset_id=${ this.datasetId }&notify=false&include_errors=true&type=discover_new&discover_by=subreddit_url`
+  private readonly headers: Record< string, string >
 
-  constructor( 
+  constructor(
     private readonly httpService: HttpService,
     private configService: ConfigService
-  ) {}
+  ) {
+    this.headers = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${ this.configService.get< string >( 'BRIGHT_DATA_API_KEY' ) }`
+    }
+  }
 
   // Start bright data scrape. Returns snapshot id to poll for results
   async startScrape( { 
@@ -112,12 +118,7 @@ export class RedditProvider {
       const response: TriggerResponse = await this.httpService.post( 
         this.triggerUrl, // TODO: Move URL to config file
         JSON.stringify( payload ),
-        // TODO: Make headers a constant across all requests
-        { headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${ this.configService.get< string >( 'BRIGHT_DATA_API_KEY' ) }`
-          }
-        }
+        { headers: this.headers }
       )
 
       this.logger.log( `Received snapshot ID from Bright Data: ${ JSON.stringify( response ) }` )
@@ -148,11 +149,7 @@ export class RedditProvider {
       try {
         const response: PollSnapshotResponse = await this.httpService.get( 
           `${ this.baseUrl }/progress/${ snapshotId }`, // TODO: Move URL to config file
-          // TODO: Make headers a constant across all requests
-          { headers: {
-            'Authorization': `Bearer ${ this.configService.get< string >( 'BRIGHT_DATA_API_KEY' ) }`,
-            'Content-Type': 'application/json'
-          } } 
+          { headers: this.headers }
         )
 
         this.logger.log( `Polled snapshot ${ snapshotId }, status: ${ response.status }` )
@@ -192,11 +189,7 @@ export class RedditProvider {
   
         const response = await this.httpService.get< RedditRecord[] | DownloadSnapshotResponse >(
           `${ this.baseUrl }/snapshot/${ snapshotId }/?format=json`, // TODO: Move URL to config file
-          // TODO: Make headers a constant across all requests
-          { headers: {
-            'Authorization': `Bearer ${ this.configService.get< string >( 'BRIGHT_DATA_API_KEY' ) }`,
-            'Content-Type': 'application/json'
-          } }
+          { headers: this.headers }
         )
 
         if( ( response as DownloadSnapshotResponse ).status == DownloadStatus.BUILDING ) {
