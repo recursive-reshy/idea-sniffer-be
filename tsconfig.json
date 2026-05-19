@@ -27,7 +27,8 @@
       "@providers/*": [ "./src/providers/*" ],
       "@storage/*": [ "./src/storage/*" ],
       "@common/*": [ "./src/common/*" ],
-      "@app-types/*": [ "./src/types/*" ]
+      "@app-types/*": [ "./src/types/*" ],
+      "@prompts/*": [ "./src/prompts/*" ]
     }
   },
   "include": [ "src/**/*", "test/**/*" ],
