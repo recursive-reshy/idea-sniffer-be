@@ -23,12 +23,12 @@
     "noFallthroughCasesInSwitch": false,
     "types": [ "node", "jest" ],
     "paths": {
-      "@runs/*": [ "./src/runs/*" ],
-      "@providers/*": [ "./src/providers/*" ],
-      "@storage/*": [ "./src/storage/*" ],
       "@common/*": [ "./src/common/*" ],
+      "@storage/*": [ "./src/storage/*" ],
       "@app-types/*": [ "./src/types/*" ],
-      "@prompts/*": [ "./src/prompts/*" ]
+      "@prompts/*": [ "./src/prompts/*" ],
+      "@providers/*": [ "./src/providers/*" ],
+      "@runs/*": [ "./src/runs/*" ],
     }
   },
   "include": [ "src/**/*", "test/**/*" ],

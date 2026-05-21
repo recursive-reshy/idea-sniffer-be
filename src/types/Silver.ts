@@ -24,8 +24,8 @@ export interface PainSignal {
   category: PainCategory
   evidenceQuotes: string[]
   marketSize: MarketSize
-  reasoning?: string        // present when outputMode is with_reasoning
-  confidence?: string       // present when outputMode is with_confidence
+  reasoning?: string // present when outputMode is with_reasoning
+  confidence?: string // present when outputMode is with_confidence
 }
 
 // Full Silver layer record
