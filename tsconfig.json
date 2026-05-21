@@ -29,6 +29,7 @@
       "@prompts/*": [ "./src/prompts/*" ],
       "@providers/*": [ "./src/providers/*" ],
       "@runs/*": [ "./src/runs/*" ],
+      "@distill/*": [ "./src/distill/*" ]
     }
   },
   "include": [ "src/**/*", "test/**/*" ],
