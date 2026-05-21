@@ -17,10 +17,11 @@ export class StorageService {
 
   constructor( private readonly configService: ConfigService ) {
     this.bronzeDir = this.configService.get< string >( 'BRONZE_DIR' ) || '.data/bronze'
-    this.filteredDir = this.configService.get< string >( 'FILTERED_DIR' ) || '.data/filtered'
-    this.silverDir = this.configService.get< string >( 'SILVER_DIR' ) || '.data/silver'
     this.ensureDir( this.bronzeDir )
+    this.filteredDir = this.configService.get< string >( 'FILTERED_DIR' ) || '.data/filtered'
     this.ensureDir( this.filteredDir )
+    this.silverDir = this.configService.get< string >( 'SILVER_DIR' ) || '.data/silver'
+    this.ensureDir( this.silverDir )
   }
 
   // Helper function to ensure that a directory exists, creating it if necessary
@@ -115,7 +116,7 @@ export class StorageService {
   }
 
   async writeSilver( records: SilverRecord[], provider: string ): Promise< string > {
-    const filePath = this.resolvePath( provider, this.filteredDir )
+    const filePath = this.resolvePath( provider, this.silverDir )
     this.logger.log( `Writing ${ records.length } filtered records to ${ filePath }` )
 
     try {
@@ -124,9 +125,9 @@ export class StorageService {
         .join( '\n' ) + '\n' // Add newline at the end of each record
 
         appendFileSync( filePath, lines, 'utf-8' )
-        this.logger.log( `Successfully wrote ${ records.length } filtered records to ${ filePath }` )
+        this.logger.log( `Successfully wrote ${ records.length } silver records to ${ filePath }` )
     } catch ( error ) {
-      this.logger.error( `Error writing to filtered storage: ${ ( error as Error ).message }` )
+      this.logger.error( `Error writing to silver storage: ${ ( error as Error ).message }` )
       throw error
     }
 

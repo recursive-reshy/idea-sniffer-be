@@ -7,6 +7,7 @@ import { StorageModule } from '@storage/storage.module'
 import { CacheModule } from './cache/cache.module'
 import { RunsModule } from '@runs/runs.module'
 import { FilterModule } from './filter/filter.module'
+import { DistillModule } from '@distill/distill.module'
 // Controllers
 import { HealthController } from './health/health.controller'
 
@@ -17,7 +18,8 @@ import { HealthController } from './health/health.controller'
     StorageModule,
     CacheModule,
     RunsModule,
-    FilterModule
+    FilterModule,
+    DistillModule
   ],
   controllers: [ HealthController ],
 } )
