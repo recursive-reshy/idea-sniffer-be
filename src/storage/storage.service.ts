@@ -6,16 +6,19 @@ import path from 'path'
 import { mkdirSync, existsSync, appendFileSync, readFileSync,  } from 'fs'
 // Types
 import { RedditRecord } from '@app-types/Reddit'
+import { SilverRecord } from '@app-types/Silver'
 
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger( StorageService.name )
   private readonly bronzeDir: string
   private readonly filteredDir: string
+  private readonly silverDir: string
 
   constructor( private readonly configService: ConfigService ) {
     this.bronzeDir = this.configService.get< string >( 'BRONZE_DIR' ) || '.data/bronze'
     this.filteredDir = this.configService.get< string >( 'FILTERED_DIR' ) || '.data/filtered'
+    this.silverDir = this.configService.get< string >( 'SILVER_DIR' ) || '.data/silver'
     this.ensureDir( this.bronzeDir )
     this.ensureDir( this.filteredDir )
   }
@@ -93,5 +96,56 @@ export class StorageService {
     }
 
     return path.basename( filePath )
+  }
+
+  async readFiltered< T >( fileName: string ): Promise< T[] > {
+    const filePath = path.join( this.filteredDir, fileName )
+
+    if ( !existsSync( filePath ) ) {
+      this.logger.error( `Filtered file not found: ${ filePath }` )
+      throw new Error( `File not found: ${ filePath }` )
+    }
+
+    const content = readFileSync( filePath, 'utf-8' )
+
+    return content
+      .split( '\n' )
+      .filter( line => line.trim() )
+      .map( line => JSON.parse(line) as T )
+  }
+
+  async writeSilver( records: SilverRecord[], provider: string ): Promise< string > {
+    const filePath = this.resolvePath( provider, this.filteredDir )
+    this.logger.log( `Writing ${ records.length } filtered records to ${ filePath }` )
+
+    try {
+      const lines = records
+        .map( record => JSON.stringify( record ) )
+        .join( '\n' ) + '\n' // Add newline at the end of each record
+
+        appendFileSync( filePath, lines, 'utf-8' )
+        this.logger.log( `Successfully wrote ${ records.length } filtered records to ${ filePath }` )
+    } catch ( error ) {
+      this.logger.error( `Error writing to filtered storage: ${ ( error as Error ).message }` )
+      throw error
+    }
+
+    return path.basename( filePath )
+  }
+
+  async readSilver< T >( fileName: string ): Promise< T[] > {
+    const filePath = path.join( this.silverDir, fileName )
+
+    if ( !existsSync( filePath ) ) {
+      this.logger.error( `Filtered file not found: ${ filePath }` )
+      throw new Error( `File not found: ${ filePath }` )
+    }
+
+    const content = readFileSync( filePath, 'utf-8' )
+
+    return content
+      .split( '\n' )
+      .filter( line => line.trim() )
+      .map( line => JSON.parse(line) as T )
   }
 }
