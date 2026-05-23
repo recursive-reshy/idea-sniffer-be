@@ -12,7 +12,10 @@ import { FilterMode } from '@app-types/Filter'
 import { RedditRecord } from '@app-types/Reddit'
 import { OutputMode, PainSignal, SilverRecord } from '@app-types/Silver'
 
-// TODO: Should probably be coming API or config
+const INPUT_COST_PER_TOKEN = 0.000003     // claude-sonnet-4 input pricing
+const OUTPUT_COST_PER_TOKEN = 0.000015    // claude-sonnet-4 output pricing
+// TODO: Should probably be coming from API or config
+const MAX_DISTILL_COST_USD = 1.00         // hard cap per distill run
 const PAIN_SCORE_THRESHOLD = 6
 const SILVER_PROVIDER = 'reddit'
 
@@ -24,6 +27,8 @@ export interface DistillResult {
     promoted: number
     rejected: number
     failed: number
+    totalCostUsd: number
+    haltedEarly: boolean
   }
 }
 
@@ -44,7 +49,7 @@ export class DistillService {
   private async scoreRecord(
     record: RedditRecord,
     outputMode: OutputMode,
-  ): Promise< PainSignal > {
+  ): Promise< { signal: PainSignal, costUsd: number } > {
     const userPrompt = buildRedditUserPrompt( record, outputMode )
 
     const message = await this.anthropic.messages.create( {
@@ -54,6 +59,15 @@ export class DistillService {
       messages: [ { role: 'user', content: userPrompt } ],
     } )
 
+    const costUsd =
+      ( message.usage.input_tokens * INPUT_COST_PER_TOKEN ) +
+      ( message.usage.output_tokens * OUTPUT_COST_PER_TOKEN )
+
+    this.logger.log(
+      `Record ${ record.post_id } — input: ${ message.usage.input_tokens } tokens, ` +
+      `output: ${ message.usage.output_tokens } tokens, cost: $${ costUsd.toFixed( 6 ) }`
+    )
+
     const text = message.content
       .filter( block => block.type === 'text' )
       .map( block => ( block as { type: 'text'; text: string } ).text )
@@ -62,7 +76,7 @@ export class DistillService {
     // Strip any accidental markdown fences
     const clean = text.replace( /```json|```/g, '' ).trim()
 
-    return JSON.parse( clean ) as PainSignal
+    return { signal: JSON.parse( clean ) as PainSignal, costUsd }
   }
 
   async distill(
@@ -78,11 +92,22 @@ export class DistillService {
     const silverRecords: SilverRecord[] = []
     let failed = 0
     let rejected = 0
+    let totalCostUsd = 0
+    let haltedEarly = false
 
     // 2. Score each record
     for ( const record of records ) {
+      if ( totalCostUsd >= MAX_DISTILL_COST_USD ) {
+        this.logger.warn(
+          `Cost cap of $${ MAX_DISTILL_COST_USD } reached at $${ totalCostUsd.toFixed( 6 ) }. Halting early.`
+        )
+        haltedEarly = true
+        break
+      }
+
       try {
-        const painSignal = await this.scoreRecord( record, outputMode )
+        const { signal: painSignal, costUsd } = await this.scoreRecord( record, outputMode )
+        totalCostUsd += costUsd
 
         // 3. Only promote records above threshold
         if ( painSignal.painScore < PAIN_SCORE_THRESHOLD ) {
@@ -130,6 +155,8 @@ export class DistillService {
       promoted: silverRecords.length,
       rejected,
       failed,
+      totalCostUsd,
+      haltedEarly,
     }
 
     this.logger.log(`Distillation complete. Stats: ${ JSON.stringify( stats ) }`)
