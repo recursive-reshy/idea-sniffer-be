@@ -3,7 +3,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 // System
 import path from 'path'
-import { mkdirSync, existsSync, appendFileSync, readFileSync,  } from 'fs'
+import { mkdirSync, existsSync, appendFileSync, readFileSync } from 'fs'
 // Types
 import { RedditRecord } from '@app-types/Reddit'
 import { SilverRecord } from '@app-types/Silver'
@@ -24,129 +24,72 @@ export class StorageService {
     this.ensureDir( this.silverDir )
   }
 
-  // Helper function to ensure that a directory exists, creating it if necessary
-  private ensureDir( path: string ): void {
-    this.logger.log( `Ensuring directory exists: ${ path }` )
-    if ( !existsSync( path ) ) {
-      mkdirSync( path, { recursive: true } )
-      this.logger.log( `Created directory: ${ path }` )
+  private ensureDir( dir: string ): void {
+    this.logger.log( `Ensuring directory exists: ${ dir }` )
+    if ( !existsSync( dir ) ) {
+      mkdirSync( dir, { recursive: true } )
+      this.logger.log( `Created directory: ${ dir }` )
     }
   }
 
-  // Helper function to resolve the file path for a given provider and current date
   private resolvePath( provider: string, dir: string ): string {
-    const date = new Date().toISOString().split( 'T' )[ 0 ] // YYYY-MM-DD
-    const fileName = `${ provider }_${ date }.jsonl`
-
-    // .data/bronze/provider_2026-05-14.jsonl
-    return path.join( dir, fileName )
+    const date = new Date().toISOString().split( 'T' )[ 0 ]
+    return path.join( dir, `${ provider }_${ date }.jsonl` )
   }
 
-  // TODO: Not provider agnostic, need to review
-  async writeBronze( records: RedditRecord[], provider: string ): Promise< void > {
-    const filePath = this.resolvePath( provider, this.bronzeDir )
+  private async writeToDir( records: object[], dir: string, provider: string ): Promise< string > {
+    const filePath = this.resolvePath( provider, dir )
     this.logger.log( `Writing ${ records.length } records to ${ filePath }` )
 
-    let written: number = 0
-
     try {
-      const lines = records
-        .map( record => JSON.stringify( record ) )
-        .join( '\n' ) + '\n' // Add newline at the end of each record
-
-        appendFileSync( filePath, lines, 'utf-8' )
-        written = records.length
-        this.logger.log( `Successfully wrote ${ written } records to ${ filePath }` )
+      const lines = records.map( record => JSON.stringify( record ) ).join( '\n' ) + '\n'
+      appendFileSync( filePath, lines, 'utf-8' )
+      this.logger.log( `Successfully wrote ${ records.length } records to ${ filePath }` )
     } catch ( error: any ) {
-      this.logger.error( `Error writing to bronze storage: ${ error.message }` )
+      this.logger.error( `Error writing to ${ filePath }: ${ error.message }` )
       throw error
     }
+
+    return path.basename( filePath )
   }
 
-  async readBronze< T >( fileName: string ): Promise< T[] > {
-    const filePath = path.join( this.bronzeDir, fileName )
+  private readFromDir< T >( fileName: string, dir: string ): T[] {
+    const filePath = path.join( dir, fileName )
 
-    if( !existsSync( filePath ) ) {
+    if ( !existsSync( filePath ) ) {
       this.logger.error( `File not found: ${ filePath }` )
       throw new Error( `File not found: ${ filePath }` )
     }
 
-    const content = readFileSync( filePath, 'utf-8' )
-
-    return content
+    return readFileSync( filePath, 'utf-8' )
       .split( '\n' )
       .filter( line => line.trim() )
       .map( line => JSON.parse( line ) as T )
   }
 
   // TODO: Not provider agnostic, need to review
+  async writeBronze( records: RedditRecord[], provider: string ): Promise< string > {
+    return this.writeToDir( records, this.bronzeDir, provider )
+  }
+
+  async readBronze< T >( fileName: string ): Promise< T[] > {
+    return this.readFromDir< T >( fileName, this.bronzeDir )
+  }
+
+  // TODO: Not provider agnostic, need to review
   async writeFiltered( records: RedditRecord[], provider: string ): Promise< string > {
-    const filePath = this.resolvePath( provider, this.filteredDir )
-    this.logger.log( `Writing ${ records.length } filtered records to ${ filePath }` )
-
-    try {
-      const lines = records
-        .map( record => JSON.stringify( record ) )
-        .join( '\n' ) + '\n' // Add newline at the end of each record
-
-        appendFileSync( filePath, lines, 'utf-8' )
-        this.logger.log( `Successfully wrote ${ records.length } filtered records to ${ filePath }` )
-    } catch ( error ) {
-      this.logger.error( `Error writing to filtered storage: ${ ( error as Error ).message }` )
-      throw error
-    }
-
-    return path.basename( filePath )
+    return this.writeToDir( records, this.filteredDir, provider )
   }
 
   async readFiltered< T >( fileName: string ): Promise< T[] > {
-    const filePath = path.join( this.filteredDir, fileName )
-
-    if ( !existsSync( filePath ) ) {
-      this.logger.error( `Filtered file not found: ${ filePath }` )
-      throw new Error( `File not found: ${ filePath }` )
-    }
-
-    const content = readFileSync( filePath, 'utf-8' )
-
-    return content
-      .split( '\n' )
-      .filter( line => line.trim() )
-      .map( line => JSON.parse(line) as T )
+    return this.readFromDir< T >( fileName, this.filteredDir )
   }
 
   async writeSilver( records: SilverRecord[], provider: string ): Promise< string > {
-    const filePath = this.resolvePath( provider, this.silverDir )
-    this.logger.log( `Writing ${ records.length } filtered records to ${ filePath }` )
-
-    try {
-      const lines = records
-        .map( record => JSON.stringify( record ) )
-        .join( '\n' ) + '\n' // Add newline at the end of each record
-
-        appendFileSync( filePath, lines, 'utf-8' )
-        this.logger.log( `Successfully wrote ${ records.length } silver records to ${ filePath }` )
-    } catch ( error ) {
-      this.logger.error( `Error writing to silver storage: ${ ( error as Error ).message }` )
-      throw error
-    }
-
-    return path.basename( filePath )
+    return this.writeToDir( records, this.silverDir, provider )
   }
 
   async readSilver< T >( fileName: string ): Promise< T[] > {
-    const filePath = path.join( this.silverDir, fileName )
-
-    if ( !existsSync( filePath ) ) {
-      this.logger.error( `Filtered file not found: ${ filePath }` )
-      throw new Error( `File not found: ${ filePath }` )
-    }
-
-    const content = readFileSync( filePath, 'utf-8' )
-
-    return content
-      .split( '\n' )
-      .filter( line => line.trim() )
-      .map( line => JSON.parse(line) as T )
+    return this.readFromDir< T >( fileName, this.silverDir )
   }
 }
