@@ -24,6 +24,7 @@
     "types": [ "node", "jest" ],
     "paths": {
       "@common/*": [ "./src/common/*" ],
+      "@prisma/*": [ "./src/prisma/*" ],
       "@storage/*": [ "./src/storage/*" ],
       "@app-types/*": [ "./src/types/*" ],
       "@prompts/*": [ "./src/prompts/*" ],

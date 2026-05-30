@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 // Modules
 import { CommonHttpModule } from '@common/http/http.module'
+import { PrismaModule } from '@prisma/prisma.module'
 import { StorageModule } from '@storage/storage.module'
 import { CacheModule } from './cache/cache.module'
 import { RunsModule } from '@runs/runs.module'
@@ -15,6 +16,7 @@ import { HealthController } from './health/health.controller'
   imports: [
     ConfigModule.forRoot( { isGlobal: true } ), // Load environment variables from .env file
     CommonHttpModule,
+    PrismaModule,
     StorageModule,
     CacheModule,
     RunsModule,
