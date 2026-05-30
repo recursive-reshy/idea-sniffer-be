@@ -10,6 +10,8 @@ async function bootstrap() {
     new FastifyAdapter() 
   )
 
+  // Without enableShutdownHooks, onModuleDestroy will not be called when the app is shutting down
+  app.enableShutdownHooks()
   app.setGlobalPrefix( 'api/v1' )
 
   await app.listen( process.env.PORT ?? 3000 )
