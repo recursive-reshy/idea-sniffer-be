@@ -1,0 +1,180 @@
+// Idea Sniffer — Prisma Schema
+// PRD v0.2.3 — NestJS + Supabase + Prisma
+// Tables: Run, BronzeRecord, FilterRun, SilverSignal
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum RunStatus {
+  PENDING
+  SCRAPING
+  READY
+  INGESTING
+  COMPLETE
+  FAILED
+}
+
+enum PreFilterStatus {
+  PENDING
+  PASS
+  DROP
+  MALFORMED
+}
+
+enum PreFilterMode {
+  LENIENT
+  STRICT
+}
+
+enum FilterRunStatus {
+  PENDING
+  RUNNING
+  COMPLETE
+  FAILED
+}
+
+enum SignalCategory {
+  missing_tool
+  broken_workflow
+  switching_frustration
+  manual_process
+}
+
+enum MarketSize {
+  small
+  medium
+  large
+}
+
+// ─────────────────────────────────────────────
+// Run
+// Tracks the lifecycle of a single Bright Data scrape job.
+// One Run produces many BronzeRecords.
+// ─────────────────────────────────────────────
+
+model Run {
+  id           String    @id @default(uuid())
+  provider     String                          // e.g. "reddit"
+  snapshotId   String                          // Bright Data snapshot handle
+  status       RunStatus @default(PENDING)
+  subreddit    String?                         // reddit-specific, nullable for future providers
+  sortBy       String?                         // reddit sort param e.g. "hot", "new"
+
+  // Run summary counters — populated on ingest completion
+  totalFetched Int       @default(0)
+  totalStored  Int       @default(0)
+  totalSkipped Int       @default(0)           // dedup hits
+  totalFailed  Int       @default(0)
+
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+
+  bronzeRecords BronzeRecord[]
+  filterRuns    FilterRun[]
+
+  @@map("runs")
+}
+
+// ─────────────────────────────────────────────
+// BronzeRecord
+// Append-only raw ingested records. Never mutated after write.
+// Dedup enforced via unique constraint on (provider, externalId).
+// ─────────────────────────────────────────────
+
+model BronzeRecord {
+  id              String          @id @default(uuid())
+  runId           String
+  run             Run             @relation(fields: [runId], references: [id])
+
+  provider        String                        // e.g. "reddit"
+  externalId      String                        // Reddit post_id — e.g. "t3_abc123"
+  rawPayload      Json                          // Full provider record as JSONB. Never mutated.
+
+  // Haiku pre-filter fields — updated by POST /api/v1/filter
+  preFilterStatus PreFilterStatus @default(PENDING)
+  preFilterMode   PreFilterMode?              // null until filter has run
+  haikuCostUsd    Float?                        // cost per record, summed on FilterRun
+
+  createdAt       DateTime        @default(now())
+
+  silverSignal    SilverSignal?
+
+  @@unique([provider, externalId])             // crash-safe dedup — replaces seen_ids.json
+  @@index([runId])
+  @@index([preFilterStatus])
+  @@map("bronze_records")
+}
+
+// ─────────────────────────────────────────────
+// FilterRun
+// Tracks the lifecycle of a single Haiku pre-filter job.
+// Triggered by POST /api/v1/filter with a runId + preFilterMode.
+// One Run can have multiple FilterRuns (e.g. LENIENT then STRICT).
+// ─────────────────────────────────────────────
+
+model FilterRun {
+  id              String          @id @default(uuid())
+  runId           String
+  run             Run             @relation(fields: [runId], references: [id])
+
+  preFilterMode   PreFilterMode
+  status          FilterRunStatus @default(PENDING)
+
+  // Outcome counters
+  totalProcessed  Int             @default(0)
+  totalPassed     Int             @default(0)
+  totalDropped    Int             @default(0)
+  totalMalformed  Int             @default(0)   // Haiku responses that were neither PASS nor DROP
+  totalCostUsd    Float           @default(0)   // sum of haikuCostUsd across all processed records
+
+  startedAt       DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime        @default(now())
+
+  @@index([runId])
+  @@map("filter_runs")
+}
+
+// ─────────────────────────────────────────────
+// SilverSignal
+// Scored Pain Signals produced by Claude Sonnet distillation.
+// Source-agnostic — provider-specific fields live in sourceMeta JSONB.
+// Only records above the painScore threshold are promoted here.
+// ─────────────────────────────────────────────
+
+model SilverSignal {
+  id               String         @id @default(uuid())
+  bronzeRecordId   String         @unique
+  bronzeRecord     BronzeRecord   @relation(fields: [bronzeRecordId], references: [id])
+
+  // AI-generated fields — produced by Claude Sonnet
+  painScore        Int                           // 1–10 willingness-to-pay signal strength
+  painSummary      String                        // one-liner plain English problem description
+  category         SignalCategory
+  evidenceQuotes   String[]                      // 2–3 quotes from post or comments
+  marketSize       MarketSize
+
+  // Source-agnostic provider snapshot — shape varies by provider
+  // Reddit example: { postId, title, url, communityName, numUpvotes, numComments, datePosted, provider }
+  sourceMeta       Json
+
+  // System fields
+  preFilterMode    PreFilterMode                 // which Haiku mode was active when processed
+  promotionThreshold Int                         // painScore floor active at promotion time
+  sonnetCostUsd    Float
+  processedAt      DateTime
+  createdAt        DateTime       @default(now())
+
+  @@index([painScore])
+  @@map("silver_signals")
+}
