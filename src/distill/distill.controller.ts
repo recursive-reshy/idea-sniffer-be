@@ -1,23 +1,29 @@
 // Nest
-import { Body, Controller, Post } from '@nestjs/common'
+import { Body, Controller, Get, Post, Query } from '@nestjs/common'
+// Prisma
+import { PreFilterMode } from '@prisma/client'
 // Services
 import { DistillService } from './distill.service'
 // Types
-import { FilterMode } from '@app-types/Filter'
 import { OutputMode } from '@app-types/Silver'
 
 interface DistillRequest {
-  filteredFile: string
+  runId: string
   outputMode?: OutputMode
-  filterMode?: FilterMode
+  preFilterMode?: PreFilterMode
 }
 
 @Controller( 'distill' )
 export class DistillController {
   constructor( private readonly distillService: DistillService ) {}
 
+  @Get()
+  async getSilverSignals( @Query( 'provider' ) provider: string, @Query( 'minPainScore' ) minPainScore: string ) {
+    return this.distillService.getSilverSignal( { provider, minPainScore: Number( minPainScore ) } )
+  }
+
   @Post()
-  async distill( @Body() { filteredFile, outputMode, filterMode }: DistillRequest ) {
-    return this.distillService.distill( filteredFile, outputMode, filterMode )
+  async distill( @Body() { runId, outputMode, preFilterMode }: DistillRequest ) {
+    return this.distillService.distill( runId, outputMode, preFilterMode )
   }
 }

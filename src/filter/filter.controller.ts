@@ -1,13 +1,15 @@
 // Nest
 import { Body, Controller, Post } from '@nestjs/common'
+// Prisma
+import { PreFilterMode } from '@prisma/client'
 // Services
 import { FilterService } from './filter.service'
 // Types
-import { FilterMode, FilterResult } from '@app-types/Filter'
+import { FilterResult } from '@app-types/Filter'
 
 interface FilterRequest {
-  bronzeFile: string
-  filtermode?: FilterMode
+  runId: string
+  filterMode?: PreFilterMode
 }
 
 @Controller( 'filter' )
@@ -15,7 +17,7 @@ export class FilterController {
   constructor( private readonly filterService: FilterService ) {}
 
   @Post()
-  async filter( @Body() { bronzeFile, filtermode }: FilterRequest ): Promise< FilterResult > {
-    return this.filterService.filter( bronzeFile, filtermode )
+  async filter( @Body() { runId, filterMode }: FilterRequest ): Promise< FilterResult > {
+    return await this.filterService.filter( runId, filterMode )
   }
 }

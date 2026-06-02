@@ -5,7 +5,6 @@ import { ConfigModule } from '@nestjs/config'
 import { CommonHttpModule } from '@common/http/http.module'
 import { PrismaModule } from '@prisma/prisma.module'
 import { StorageModule } from '@storage/storage.module'
-import { CacheModule } from './cache/cache.module'
 import { RunsModule } from '@runs/runs.module'
 import { FilterModule } from './filter/filter.module'
 import { DistillModule } from '@distill/distill.module'
@@ -18,7 +17,6 @@ import { HealthController } from './health/health.controller'
     CommonHttpModule,
     PrismaModule,
     StorageModule,
-    CacheModule,
     RunsModule,
     FilterModule,
     DistillModule

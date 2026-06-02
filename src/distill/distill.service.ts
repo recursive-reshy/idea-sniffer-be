@@ -1,27 +1,26 @@
 // Nest
-import { Injectable, Logger } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 // Anthropic
 import Anthropic from '@anthropic-ai/sdk'
+// Prisma
+import { MarketSize, PreFilterMode, PreFilterStatus, SignalCategory, SilverSignal } from '@prisma/client'
 // Services
-import { StorageService } from '@storage/storage.service'
+import { GetSilverSignalsRequest, StorageService } from '@storage/storage.service'
 // Prompts
 import { buildRedditUserPrompt, REDDIT_SYSTEM_PROMPT } from '@prompts/reddit.prompt'
 // Types
-import { FilterMode } from '@app-types/Filter'
 import { RedditRecord } from '@app-types/Reddit'
-import { OutputMode, PainSignal, SilverRecord } from '@app-types/Silver'
+import { OutputMode, PainSignal } from '@app-types/Silver'
 
 const INPUT_COST_PER_TOKEN = 0.000003     // claude-sonnet-4 input pricing
 const OUTPUT_COST_PER_TOKEN = 0.000015    // claude-sonnet-4 output pricing
 // TODO: Should probably be coming from API or config
-const MAX_DISTILL_COST_USD = 1.00         // hard cap per distill run
+const MAX_DISTILL_COST_USD = 1.00
 const PAIN_SCORE_THRESHOLD = 6
-const SILVER_PROVIDER = 'reddit'
 
 export interface DistillResult {
-  filteredFile: string
-  silverFile: string
+  runId: string
   stats: {
     total: number
     promoted: number
@@ -41,6 +40,7 @@ export class DistillService {
     private readonly configService: ConfigService,
     private readonly storageService: StorageService
   ) {
+    // TODO: Consider making this a client so I dont have to repeat myself. Singleton?
     this.anthropic = new Anthropic( {
       apiKey: this.configService.get< string >( 'ANTHROPIC_API_KEY' )
     } )
@@ -71,7 +71,7 @@ export class DistillService {
     const text = message.content
       .filter( block => block.type === 'text' )
       .map( block => ( block as { type: 'text'; text: string } ).text )
-      .join('')
+      .join( '' )
 
     // Strip any accidental markdown fences
     const clean = text.replace( /```json|```/g, '' ).trim()
@@ -80,23 +80,23 @@ export class DistillService {
   }
 
   async distill(
-    filteredFile: string,
+    runId: string,
     outputMode: OutputMode = OutputMode.WITH_REASONING,
-    filterMode: FilterMode = FilterMode.BALANCED,
+    preFilterMode: PreFilterMode = PreFilterMode.LENIENT,
   ): Promise< DistillResult > {
-    // 1. Read filtered file
-    const records = await this.storageService.readFiltered< RedditRecord >( filteredFile )
+    // 1. Read PASS bronze records for this run
+    const bronzeRecords = await this.storageService.getBronzeRecords( runId, PreFilterStatus.PASS )
 
-    this.logger.log(`Distilling ${ records.length } records from ${ filteredFile } [mode: ${ outputMode } ]`)
+    this.logger.log( `Distilling ${ bronzeRecords.length } records for run: ${ runId } [mode: ${ outputMode }]` )
 
-    const silverRecords: SilverRecord[] = []
     let failed = 0
     let rejected = 0
+    let promoted = 0
     let totalCostUsd = 0
     let haltedEarly = false
 
     // 2. Score each record
-    for ( const record of records ) {
+    for ( const bronzeRecord of bronzeRecords ) {
       if ( totalCostUsd >= MAX_DISTILL_COST_USD ) {
         this.logger.warn(
           `Cost cap of $${ MAX_DISTILL_COST_USD } reached at $${ totalCostUsd.toFixed( 6 ) }. Halting early.`
@@ -105,6 +105,8 @@ export class DistillService {
         break
       }
 
+      const record = bronzeRecord.rawPayload as unknown as RedditRecord
+
       try {
         const { signal: painSignal, costUsd } = await this.scoreRecord( record, outputMode )
         totalCostUsd += costUsd
@@ -112,55 +114,61 @@ export class DistillService {
         // 3. Only promote records above threshold
         if ( painSignal.painScore < PAIN_SCORE_THRESHOLD ) {
           rejected++
-          this.logger.log(`Record ${ record.post_id } rejected with score ${ painSignal.painScore }`)
+          this.logger.log( `Record ${ record.post_id } rejected with score ${ painSignal.painScore }` )
           continue
         }
 
-        // 4. Build Silver record
-        const silverRecord: SilverRecord = {
-          // AI generated
-          ...painSignal,
+        // 4. Persist silver signal to DB
+        await this.storageService.createSilverSignal( {
+          bronzeRecordId: bronzeRecord.id,
+          painScore: painSignal.painScore,
+          painSummary: painSignal.painSummary,
+          category: painSignal.category as unknown as SignalCategory,
+          evidenceQuotes: painSignal.evidenceQuotes,
+          marketSize: painSignal.marketSize as unknown as MarketSize,
+          sourceMeta: {
+            postId: record.post_id,
+            url: record.url,
+            title: record.title,
+            communityName: record.community_name,
+            numUpvotes: record.num_upvotes,
+            numComments: record.num_comments,
+            datePosted: record.date_posted,
+          },
+          preFilterMode,
+          promotionThreshold: PAIN_SCORE_THRESHOLD,
+          sonnetCostUsd: costUsd,
+          processedAt: new Date(),
+        } )
 
-          // Carried over from RedditRecord
-          postId: record.post_id,
-          title: record.title,
-          url: record.url,
-          communityName: record.community_name,
-          numUpvotes: record.num_upvotes,
-          numComments: record.num_comments,
-          datePosted: record.date_posted,
-
-          // System metadata
-          provider: SILVER_PROVIDER,
-          processedAt: new Date().toISOString(),
-          filterMode,
-          outputMode,
-        }
-
-        silverRecords.push( silverRecord )
+        promoted++
 
       } catch ( error ) {
         failed++
-        this.logger.error(`Failed to score record ${ record.post_id }`, error )
+        this.logger.error( `Failed to score record ${ record.post_id }`, error )
       }
     }
 
-    // 5. Write Silver records
-    const silverFile = silverRecords.length
-      ? await this.storageService.writeSilver( silverRecords, SILVER_PROVIDER )
-      : ''
-
     const stats = {
-      total: records.length,
-      promoted: silverRecords.length,
+      total: bronzeRecords.length,
+      promoted,
       rejected,
       failed,
       totalCostUsd,
       haltedEarly,
     }
 
-    this.logger.log(`Distillation complete. Stats: ${ JSON.stringify( stats ) }`)
+    this.logger.log( `Distillation complete. Stats: ${ JSON.stringify( stats ) }` )
 
-    return { filteredFile, silverFile, stats }
+    return { runId, stats }
+  }
+
+  async getSilverSignal( request: GetSilverSignalsRequest ): Promise< SilverSignal[] > {
+    try {
+      return await this.storageService.getSilverSignals( request )
+    } catch ( error ) {
+      this.logger.error( `Failed to fetch silver signals`, error )
+      throw new HttpException( 'Server error', HttpStatus.SERVICE_UNAVAILABLE)
+    }
   }
 }

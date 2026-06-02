@@ -1,95 +1,127 @@
 // Nest
 import { Injectable, Logger } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
-// System
-import path from 'path'
-import { mkdirSync, existsSync, appendFileSync, readFileSync } from 'fs'
+// Prisma
+import {
+  BronzeRecord,
+  FilterRun,
+  FilterRunStatus,
+  MarketSize,
+  PreFilterMode,
+  PreFilterStatus,
+  Run,
+  RunStatus,
+  SignalCategory,
+  SilverSignal,
+} from '@prisma/client'
+import { PrismaService } from '../prisma/prisma.service'
 // Types
 import { RedditRecord } from '@app-types/Reddit'
-import { SilverRecord } from '@app-types/Silver'
+
+export interface GetSilverSignalsRequest {
+  provider?: string
+  minPainScore?: number
+}
 
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger( StorageService.name )
-  private readonly bronzeDir: string
-  private readonly filteredDir: string
-  private readonly silverDir: string
 
-  constructor( private readonly configService: ConfigService ) {
-    this.bronzeDir = this.configService.get< string >( 'BRONZE_DIR' ) || '.data/bronze'
-    this.ensureDir( this.bronzeDir )
-    this.filteredDir = this.configService.get< string >( 'FILTERED_DIR' ) || '.data/filtered'
-    this.ensureDir( this.filteredDir )
-    this.silverDir = this.configService.get< string >( 'SILVER_DIR' ) || '.data/silver'
-    this.ensureDir( this.silverDir )
+  constructor( private readonly prisma: PrismaService ) {}
+
+  // Run
+  async createRun( data: {
+    provider: string
+    snapshotId: string
+    subreddit?: string
+    sortBy?: string
+  } ): Promise< Run > {
+    this.logger.log( `Creating run for provider: ${ data.provider }` )
+    return this.prisma.run.create( { data: { ...data, status: RunStatus.PENDING } } )
   }
 
-  private ensureDir( dir: string ): void {
-    this.logger.log( `Ensuring directory exists: ${ dir }` )
-    if ( !existsSync( dir ) ) {
-      mkdirSync( dir, { recursive: true } )
-      this.logger.log( `Created directory: ${ dir }` )
-    }
+  async updateRun( id: string, data: Partial< {
+    status: RunStatus
+    totalFetched: number
+    totalStored: number
+    totalSkipped: number
+    totalFailed: number
+    startedAt: Date
+    completedAt: Date
+  } > ): Promise< Run> {
+    return this.prisma.run.update( { where: { id }, data } )
   }
 
-  private resolvePath( provider: string, dir: string ): string {
-    const date = new Date().toISOString().split( 'T' )[ 0 ]
-    return path.join( dir, `${ provider }_${ date }.jsonl` )
+  // BronzeRecord
+  async createBronzeRecords( runId: string, provider: string, records: RedditRecord[] ): Promise< { stored: number, skipped: number } > {
+    const data = records.map( record => ( {
+      runId,
+      provider,
+      externalId: record.post_id,
+      rawPayload: record as object,
+      preFilterStatus: PreFilterStatus.PENDING,
+    } ) )
+
+    const result = await this.prisma.bronzeRecord.createMany( { data, skipDuplicates: true } )
+    const stored = result.count
+    const skipped = records.length - stored
+
+    this.logger.log( `Stored ${ stored } bronze records, skipped ${ skipped } duplicates` )
+    return { stored, skipped }
   }
 
-  private async writeToDir( records: object[], dir: string, provider: string ): Promise< string > {
-    const filePath = this.resolvePath( provider, dir )
-    this.logger.log( `Writing ${ records.length } records to ${ filePath }` )
-
-    try {
-      const lines = records.map( record => JSON.stringify( record ) ).join( '\n' ) + '\n'
-      appendFileSync( filePath, lines, 'utf-8' )
-      this.logger.log( `Successfully wrote ${ records.length } records to ${ filePath }` )
-    } catch ( error: any ) {
-      this.logger.error( `Error writing to ${ filePath }: ${ error.message }` )
-      throw error
-    }
-
-    return path.basename( filePath )
+  async getBronzeRecords( runId: string, preFilterStatus?: PreFilterStatus ): Promise< BronzeRecord[] > {
+    const where = preFilterStatus ? { runId, preFilterStatus } : { runId }
+    return this.prisma.bronzeRecord.findMany( { where } )
   }
 
-  private readFromDir< T >( fileName: string, dir: string ): T[] {
-    const filePath = path.join( dir, fileName )
-
-    if ( !existsSync( filePath ) ) {
-      this.logger.error( `File not found: ${ filePath }` )
-      throw new Error( `File not found: ${ filePath }` )
-    }
-
-    return readFileSync( filePath, 'utf-8' )
-      .split( '\n' )
-      .filter( line => line.trim() )
-      .map( line => JSON.parse( line ) as T )
+  async updateBronzeRecord( id: string, data: Partial< {
+    preFilterStatus: PreFilterStatus
+    preFilterMode: PreFilterMode
+    haikuCostUsd: number
+  } > ): Promise<BronzeRecord> {
+    return this.prisma.bronzeRecord.update( { where: { id }, data } )
   }
 
-  // TODO: Not provider agnostic, need to review
-  async writeBronze( records: RedditRecord[], provider: string ): Promise< string > {
-    return this.writeToDir( records, this.bronzeDir, provider )
+  // FilterRun
+  async createFilterRun( data: { runId: string, preFilterMode: PreFilterMode } ): Promise< FilterRun > {
+    this.logger.log( `Creating filter run for run: ${ data.runId }` )
+    return this.prisma.filterRun.create( { data: { ...data, status: FilterRunStatus.PENDING } } )
   }
 
-  async readBronze< T >( fileName: string ): Promise< T[] > {
-    return this.readFromDir< T >( fileName, this.bronzeDir )
+  async updateFilterRun( id: string, data: Partial< {
+    status: FilterRunStatus
+    totalProcessed: number
+    totalPassed: number
+    totalDropped: number
+    totalMalformed: number
+    totalCostUsd: number
+    startedAt: Date
+    completedAt: Date
+  } > ): Promise<FilterRun> {
+    return this.prisma.filterRun.update( { where: { id }, data } )
   }
 
-  // TODO: Not provider agnostic, need to review
-  async writeFiltered( records: RedditRecord[], provider: string ): Promise< string > {
-    return this.writeToDir( records, this.filteredDir, provider )
+  // SilverSignal
+  async createSilverSignal( data: {
+    bronzeRecordId: string
+    painScore: number
+    painSummary: string
+    category: SignalCategory
+    evidenceQuotes: string[]
+    marketSize: MarketSize
+    sourceMeta: object
+    preFilterMode: PreFilterMode
+    promotionThreshold: number
+    sonnetCostUsd: number
+    processedAt: Date
+  } ): Promise< SilverSignal > {
+    return this.prisma.silverSignal.create( { data } )
   }
 
-  async readFiltered< T >( fileName: string ): Promise< T[] > {
-    return this.readFromDir< T >( fileName, this.filteredDir )
-  }
-
-  async writeSilver( records: SilverRecord[], provider: string ): Promise< string > {
-    return this.writeToDir( records, this.silverDir, provider )
-  }
-
-  async readSilver< T >( fileName: string ): Promise< T[] > {
-    return this.readFromDir< T >( fileName, this.silverDir )
+  async getSilverSignals( { provider, minPainScore = 6 }: GetSilverSignalsRequest ): Promise< SilverSignal[] > {
+    const where: Record< string, unknown > = {}
+    if ( minPainScore != undefined ) where.painScore = { gte: minPainScore }
+    if ( provider ) where.bronzeRecord = { provider: provider }
+    return this.prisma.silverSignal.findMany( { where, orderBy: { painScore: 'desc' } } )
   }
 }

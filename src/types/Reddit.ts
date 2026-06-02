@@ -89,6 +89,6 @@ export interface RedditRelatedPost {
 
 // Response shape returned by startRun
 export interface RedditRunResult {
-  records: RedditRecord[]
+  runId: string
   elapsed: string
 }

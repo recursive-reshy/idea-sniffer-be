@@ -109,9 +109,9 @@ export const buildRedditUserPrompt = (
   outputMode: OutputMode
 ): string => {
   const comments = record.comments
-    ?.slice(0, 5)
-    .map(c => `- ${c.comment}`)
-    .join('\n') ?? ''
+    ?.slice( 0, 5 ) // TODO: Taking top 5 comments. Consider making this configurable
+    .map( ( { comment } ) => `- ${ comment }` )
+    .join( '\n' ) ?? ''
 
   const outputInstruction = outputMode === OutputMode.WITH_REASONING
     ? 'Include a "reasoning" field explaining your score in 2-3 sentences.'
@@ -120,28 +120,28 @@ export const buildRedditUserPrompt = (
     : 'Return structured JSON only. No reasoning field needed.'
 
   return `
-Analyse this Reddit post for pain signals.
+  Analyse this Reddit post for pain signals.
 
-Community: ${record.community_name} (${record.community_members_num} members)
-Engagement: ${record.num_upvotes} upvotes, ${record.num_comments} comments
+  Community: ${ record.community_name } ( ${ record.community_members_num } members)
+  Engagement: ${ record.num_upvotes } upvotes, ${ record.num_comments } comments
 
-Title: ${record.title}
+  Title: ${ record.title }
 
-Post: ${record.description}
+  Post: ${ record.description }
 
-Top comments:
-${comments}
+  Top comments:
+  ${ comments }
 
-${outputInstruction}
+  ${ outputInstruction }
 
-Return this exact JSON:
-{
-  "painScore": <1-10>,
-  "painSummary": "<one sentence describing the problem>",
-  "category": "<missing_tool|broken_workflow|switching_frustration|manual_process>",
-  "evidenceQuotes": ["<quote1>", "<quote2>"],
-  "marketSize": "<small|medium|large>",
-  "reasoning": "<2-3 sentences — only include if requested above>"
-}
-`.trim()
+  Return this exact JSON:
+  {
+    "painScore": <1-10>,
+    "painSummary": "<one sentence describing the problem>",
+    "category": "<missing_tool|broken_workflow|switching_frustration|manual_process>",
+    "evidenceQuotes": ["<quote1>", "<quote2>"],
+    "marketSize": "<small|medium|large>",
+    "reasoning": "<2-3 sentences — only include if requested above>"
+  }
+  `.trim()
 }
