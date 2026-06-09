@@ -12,6 +12,7 @@ import { buildRedditUserPrompt, REDDIT_SYSTEM_PROMPT } from '@prompts/reddit.pro
 // Types
 import { RedditRecord } from '@app-types/Reddit'
 import { OutputMode, PainSignal } from '@app-types/Silver'
+import { PaginatedResponse } from '@app-types/Common'
 
 const INPUT_COST_PER_TOKEN = 0.000003     // claude-sonnet-4 input pricing
 const OUTPUT_COST_PER_TOKEN = 0.000015    // claude-sonnet-4 output pricing
@@ -163,12 +164,12 @@ export class DistillService {
     return { runId, stats }
   }
 
-  async getSilverSignal( request: GetSilverSignalsRequest ): Promise< SilverSignal[] > {
+  async getSilverSignal( request: GetSilverSignalsRequest ): Promise< PaginatedResponse< SilverSignal > > {
     try {
       return await this.storageService.getSilverSignals( request )
     } catch ( error ) {
       this.logger.error( `Failed to fetch silver signals`, error )
-      throw new HttpException( 'Server error', HttpStatus.SERVICE_UNAVAILABLE)
+      throw new HttpException( 'Server error', HttpStatus.SERVICE_UNAVAILABLE )
     }
   }
 }

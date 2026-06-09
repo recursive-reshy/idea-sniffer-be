@@ -18,8 +18,18 @@ export class DistillController {
   constructor( private readonly distillService: DistillService ) {}
 
   @Get()
-  async getSilverSignals( @Query( 'provider' ) provider: string, @Query( 'minPainScore' ) minPainScore: string ) {
-    return this.distillService.getSilverSignal( { provider, minPainScore: Number( minPainScore ) } )
+  async getSilverSignals(
+    @Query( 'provider' ) provider: string,
+    @Query( 'minPainScore' ) minPainScore: string,
+    @Query( 'page' ) page: string,
+    @Query( 'limit' ) limit: string,
+  ) {
+    return this.distillService.getSilverSignal( {
+      provider,
+      minPainScore: Number( minPainScore ) || undefined,
+      page: Number( page ) || undefined,
+      limit: Number( limit ) || undefined,
+    } )
   }
 
   @Post()
