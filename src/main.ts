@@ -14,6 +14,12 @@ async function bootstrap() {
   app.enableShutdownHooks()
   app.setGlobalPrefix( 'api/v1' )
 
+  app.enableCors( {
+    origin: 'http://localhost:5173', // TODO: Should come from env
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  } )
+
   await app.listen( process.env.PORT ?? 3000 )
 }
 
