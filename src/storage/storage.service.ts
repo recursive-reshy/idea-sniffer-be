@@ -16,13 +16,15 @@ import {
 import { PrismaService } from '../prisma/prisma.service'
 // Types
 import { RedditRecord } from '@app-types/Reddit'
-import { PaginatedResponse } from '@app-types/Common'
+import { PaginatedResponse, SortOrder } from '@app-types/Common'
 
 export interface GetSilverSignalsRequest {
   provider?: string
   minPainScore?: number
   page?: number
   limit?: number
+  sortBy?: 'painScore'
+  sortOrder?: SortOrder
 }
 
 @Injectable()
@@ -121,7 +123,7 @@ export class StorageService {
     return this.prisma.silverSignal.create( { data } )
   }
 
-  async getSilverSignals( { provider, minPainScore = 6, page = 1, limit = 20 }: GetSilverSignalsRequest ): Promise< PaginatedResponse< SilverSignal > > {
+  async getSilverSignals( { provider, minPainScore = 6, page = 1, limit = 20, sortBy = 'painScore', sortOrder = 'desc' }: GetSilverSignalsRequest ): Promise< PaginatedResponse< SilverSignal > > {
     const where: Record< string, unknown > = {}
     if ( minPainScore != undefined ) where.painScore = { gte: minPainScore }
     if ( provider ) where.bronzeRecord = { provider }
@@ -130,7 +132,7 @@ export class StorageService {
 
     const [ total, data ] = await Promise.all( [
       this.prisma.silverSignal.count( { where } ),
-      this.prisma.silverSignal.findMany( { where, orderBy: { painScore: 'desc' }, skip, take: limit } ),
+      this.prisma.silverSignal.findMany( { where, orderBy: { [ sortBy ]: sortOrder }, skip, take: limit } ),
     ] )
 
     return { data, total, page, limit, totalPages: Math.ceil( total / limit ) }

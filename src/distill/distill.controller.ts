@@ -23,12 +23,16 @@ export class DistillController {
     @Query( 'minPainScore' ) minPainScore: string,
     @Query( 'page' ) page: string,
     @Query( 'limit' ) limit: string,
+    @Query( 'sortBy' ) sortBy: string,
+    @Query( 'sortOrder' ) sortOrder: string,
   ) {
     return this.distillService.getSilverSignal( {
       provider,
       minPainScore: Number( minPainScore ) || undefined,
       page: Number( page ) || undefined,
       limit: Number( limit ) || undefined,
+      sortBy: sortBy == 'painScore' ? sortBy : undefined,
+      sortOrder: sortOrder == 'asc' || sortOrder == 'desc' ? sortOrder : undefined,
     } )
   }
 

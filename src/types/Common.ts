@@ -5,3 +5,5 @@ export interface PaginatedResponse< T > {
   limit: number
   totalPages: number
 }
+
+export type SortOrder = 'asc' | 'desc'
