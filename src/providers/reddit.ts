@@ -140,43 +140,16 @@ export class RedditProvider {
     }
   }
 
-  // Poll for results using snapshot id until status is ready or failed. Returns status
-  async pollSnapshot( snapshotId: string ): Promise< PollStatus > {
-    const MAX_RETRIES: number = 3
-    let retries: number = 0
+  // Single-shot poll for the current snapshot status
+  async getSnapshotStatus( snapshotId: string ): Promise< PollStatus > {
+    const response: PollSnapshotResponse = await this.httpService.get(
+      `${ this.baseUrl }/progress/${ snapshotId }`, // TODO: Move URL to config file
+      { headers: this.headers }
+    )
 
-    while ( true ) {
-      try {
-        const response: PollSnapshotResponse = await this.httpService.get( 
-          `${ this.baseUrl }/progress/${ snapshotId }`, // TODO: Move URL to config file
-          { headers: this.headers }
-        )
+    this.logger.log( `Polled snapshot ${ snapshotId }, status: ${ response.status }` )
 
-        this.logger.log( `Polled snapshot ${ snapshotId }, status: ${ response.status }` )
-
-        if ( response.status == PollStatus.READY ) {
-          this.logger.log( `Snapshot ${ snapshotId } is ready` )
-          return PollStatus.READY
-        } else if ( response.status == PollStatus.FAILED ) {
-          this.logger.error( `Snapshot ${ snapshotId } failed` )
-          throw new HttpException( 'Snapshot processing failed', HttpStatus.BAD_GATEWAY )
-        }
-
-        await sleep( 5 * 1000 )
-        // TODO: Need to handle exceptions thrown in try block. Similar to startScrape
-      } catch ( error: any ) {
-        if ( error instanceof HttpException ) throw error
-        retries++
-        this.logger.error( `Error while polling snapshot ${ snapshotId }, attempt ${ retries }`, JSON.stringify( error ) )
-
-        if ( retries >= MAX_RETRIES ) {
-          this.logger.error( `Maximum retries exceeded for snapshot ${ snapshotId }` )
-          throw new HttpException( 'Maximum retries exceeded', HttpStatus.BAD_GATEWAY )
-        }
-
-        await sleep( 5 * 1000 )
-      }
-    }
+    return response.status
   }
 
   async downloadSnapshot( snapshotId: string ): Promise< RedditRecord[] > {

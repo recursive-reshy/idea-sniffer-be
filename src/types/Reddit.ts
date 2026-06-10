@@ -90,5 +90,20 @@ export interface RedditRelatedPost {
 // Response shape returned by startRun
 export interface RedditRunResult {
   runId: string
+  snapshotId: string
+}
+
+// Response shape returned by ingestSnapshot
+export interface RedditIngestResult {
+  runId: string
+  totalFetched: number
+  stored: number
+  skipped: number
   elapsed: string
+}
+
+// Response shape returned by getSnapshotStatus
+export interface RedditSnapshotStatus {
+  snapshotId: string
+  status: string
 }
