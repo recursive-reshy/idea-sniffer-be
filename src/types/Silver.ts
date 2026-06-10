@@ -53,4 +53,14 @@ export interface SilverRecord {
   processedAt: string
   filterMode: string
   outputMode: OutputMode
+
+  sourceMeta: {
+    postId: string
+    url: string
+    title: string
+    communityName: string
+    numUpvotes: number
+    numComments: number
+    datePosted: string
+  }
 }
