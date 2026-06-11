@@ -18,6 +18,13 @@ import { PrismaService } from '../prisma/prisma.service'
 import { RedditRecord } from '@app-types/Reddit'
 import { PaginatedResponse, SortOrder } from '@app-types/Common'
 
+export interface GetRunsRequest {
+  provider?: string
+  status?: RunStatus
+  page?: number
+  limit?: number
+}
+
 export interface GetSilverSignalsRequest {
   provider?: string
   minPainScore?: number
@@ -54,6 +61,21 @@ export class StorageService {
     completedAt: Date
   } > ): Promise< Run> {
     return this.prisma.run.update( { where: { id }, data } )
+  }
+
+  async getRuns( { provider, status, page = 1, limit = 20 }: GetRunsRequest ): Promise< PaginatedResponse< Run > > {
+    const where: Record< string, unknown > = {}
+    if ( provider ) where.provider = provider
+    if ( status ) where.status = status
+
+    const skip = ( page - 1 ) * limit
+
+    const [ total, data ] = await Promise.all( [
+      this.prisma.run.count( { where } ),
+      this.prisma.run.findMany( { where, orderBy: { createdAt: 'desc' }, skip, take: limit } ),
+    ] )
+
+    return { data, total, page, limit, totalPages: Math.ceil( total / limit ) }
   }
 
   // BronzeRecord

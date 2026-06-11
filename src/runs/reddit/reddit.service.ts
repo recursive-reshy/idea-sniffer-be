@@ -1,15 +1,16 @@
 // Nest
-import { Injectable, Logger } from '@nestjs/common'
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common'
 // Prisma
-import { RunStatus } from '@prisma/client'
+import { Run, RunStatus } from '@prisma/client'
 // Providers
 import { RedditProvider } from '@providers/reddit'
 // Services
-import { StorageService } from '@storage/storage.service'
+import { GetRunsRequest, StorageService } from '@storage/storage.service'
 // Utils
 import { formatElapsed } from '@common/utils'
 // Types
 import { FetchSubredditsPayload, RedditRecord, RedditRunResult, RedditIngestResult, RedditSnapshotStatus } from '@app-types/Reddit'
+import { PaginatedResponse } from '@app-types/Common'
 
 @Injectable()
 export class RedditService {
@@ -20,6 +21,15 @@ export class RedditService {
     private readonly redditProvider: RedditProvider,
     private readonly storageService: StorageService,
   ) {}
+
+  async getRuns( request: GetRunsRequest ): Promise< PaginatedResponse< Run > > {
+    try {
+      return await this.storageService.getRuns( request )
+    } catch ( error ) {
+      this.logger.error( `Failed to fetch runs`, error )
+      throw new HttpException( 'Server error', HttpStatus.SERVICE_UNAVAILABLE )
+    }
+  }
 
   // Trigger a scrape and create the run record. Returns immediately — caller polls for status separately
   async startRun( body: FetchSubredditsPayload ): Promise< RedditRunResult > {
