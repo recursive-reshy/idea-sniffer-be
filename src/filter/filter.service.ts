@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 // Prisma
-import { BronzeRecord, FilterRunStatus, PreFilterMode, PreFilterStatus } from '@prisma/client'
+import { BronzeRecord, FilterRun, FilterRunStatus, PreFilterMode, PreFilterStatus } from '@prisma/client'
 // Anthropic
 import Anthropic from '@anthropic-ai/sdk'
 // Services
@@ -12,6 +12,7 @@ import { buildFilterPrompt, PreFilterPromptInput } from '@prompts/prefilter.prom
 // Types
 import { FilterResult } from '@app-types/Filter'
 import { RedditRecord } from '@app-types/Reddit'
+import { PaginatedResponse } from '@app-types/Common'
 
 const INPUT_COST_PER_TOKEN  = 0.0000008   // claude-haiku-4-5 input  pricing
 const OUTPUT_COST_PER_TOKEN = 0.000004    // claude-haiku-4-5 output pricing
@@ -73,6 +74,10 @@ export class FilterService {
     this.logger.log( `Record ${ raw.post_id } → ${ status } | cost: $${ costUsd.toFixed( 6 ) }` )
 
     return { status, costUsd }
+  }
+
+  async getFilterRuns( runId?: string, page?: number, limit?: number ): Promise< PaginatedResponse< FilterRun > > {
+    return this.storageService.getFilterRuns( { runId, page, limit } )
   }
 
   async filter( runId: string, mode: PreFilterMode = PreFilterMode.LENIENT ): Promise< FilterResult > {

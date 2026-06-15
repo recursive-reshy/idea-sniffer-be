@@ -25,6 +25,12 @@ export interface GetRunsRequest {
   limit?: number
 }
 
+export interface GetFilterRunsRequest {
+  runId?: string
+  page?: number
+  limit?: number
+}
+
 export interface GetSilverSignalsRequest {
   provider?: string
   minPainScore?: number
@@ -126,6 +132,18 @@ export class StorageService {
     completedAt: Date
   } > ): Promise<FilterRun> {
     return this.prisma.filterRun.update( { where: { id }, data } )
+  }
+
+  async getFilterRuns( { runId, page = 1, limit = 20 }: GetFilterRunsRequest ): Promise< PaginatedResponse< FilterRun > > {
+    const where = runId ? { runId } : {}
+    const skip = ( page - 1 ) * limit
+
+    const [ total, data ] = await Promise.all( [
+      this.prisma.filterRun.count( { where } ),
+      this.prisma.filterRun.findMany( { where, orderBy: { createdAt: 'desc' }, skip, take: limit } ),
+    ] )
+
+    return { data, total, page, limit, totalPages: Math.ceil( total / limit ) }
   }
 
   // SilverSignal
