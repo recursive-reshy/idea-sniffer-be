@@ -76,6 +76,15 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@common/(.*)$": "<rootDir>/common/$1",
+      "^@storage/(.*)$": "<rootDir>/storage/$1",
+      "^@app-types/(.*)$": "<rootDir>/types/$1",
+      "^@prompts/(.*)$": "<rootDir>/prompts/$1",
+      "^@providers/(.*)$": "<rootDir>/providers/$1",
+      "^@runs/(.*)$": "<rootDir>/runs/$1",
+      "^@distill/(.*)$": "<rootDir>/distill/$1"
+    }
   }
 }
